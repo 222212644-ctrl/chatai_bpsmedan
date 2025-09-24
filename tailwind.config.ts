@@ -47,48 +47,38 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
-          foreground: "hsl(var(--sidebar-foreground))",
-          primary: "hsl(var(--sidebar-primary))",
-          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
-          accent: "hsl(var(--sidebar-accent))",
-          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
-          border: "hsl(var(--sidebar-border))",
-          ring: "hsl(var(--sidebar-ring))",
-        },
         bps: {
           // Primary & Secondary
-          primary: "#003366",      // Biru Tua BPS
-          secondary: "#007BFF",    // Biru Cerah untuk CTA
-          accent: "#00B894",       // Hijau Toska untuk highlights
+          primary: "#003366", // Biru Tua BPS
+          secondary: "#007BFF", // Biru Cerah untuk CTA
+          accent: "#00B894", // Hijau Toska untuk highlights
 
           // Backgrounds
-          background: "#FFFFFF",   // Putih bersih
-          gray: "#F5F6FA",        // Abu-abu sangat lembut
+          background: "#FFFFFF", // Putih bersih
+          gray: "#F5F6FA", // Abu-abu sangat lembut
 
           // Text Colors
           text: {
-            primary: "#212529",    // Hitam pekat
-            secondary: "#495057",  // Abu-abu gelap
-            muted: "#6C757D",     // Abu-abu medium
+            primary: "#212529", // Hitam pekat
+            secondary: "#495057", // Abu-abu gelap
+            muted: "#6C757D", // Abu-abu medium
           },
 
           // Accent Highlights
-          yellow: "#FFD43B",      // Kuning cerah untuk highlights
-          coral: "#FF6B6B",       // Merah coral untuk alerts
+          yellow: "#FFD43B", // Kuning cerah untuk highlights
+          coral: "#FF6B6B", // Merah coral untuk alerts
 
           // Button States
           button: {
-            normal: "#007BFF",    // Biru cerah
-            hover: "#0056B3",     // Biru gelap
-            disabled: "#CED4DA",  // Abu lembut
+            normal: "#007BFF", // Biru cerah
+            hover: "#0056B3", // Biru gelap
+            disabled: "#CED4DA", // Abu lembut
           },
 
           // Chat Colors
           chat: {
-            user: "#007BFF",      // User bubble
-            ai: "#E9ECEF",        // AI bubble
+            user: "#007BFF", // User bubble
+            ai: "#E9ECEF", // AI bubble
           },
         },
       },
@@ -114,10 +104,15 @@ export default {
             height: "0",
           },
         },
+        "caret-blink": { // ADDED
+          "0%,70%,100%": { opacity: "1" },
+          "20%": { opacity: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "caret-blink": "caret-blink 1.2s ease-out infinite", // ADDED
       },
     },
   },
