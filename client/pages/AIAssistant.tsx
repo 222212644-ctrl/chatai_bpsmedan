@@ -2,6 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Send, Bot, User, ExternalLink, Loader2, MessageSquare, Edit, Square, Plus, Menu, X } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  getSuggestions,
+  getCategories,
+  searchBPSData,
+  detectSpecificKeywords,
+  BPSDataItem,
+} from "@/data/bpsData";
 
 interface Message {
   id: string;
@@ -12,92 +19,8 @@ interface Message {
     title: string;
     url: string;
   }>;
-  relatedData?: any[];
+  relatedData?: BPSDataItem[];
 }
-
-// Mock BPS Data Interface
-interface BPSDataItem {
-  subject_id: string;
-  title: string;
-  description: string;
-  url: string;
-  category: string;
-}
-
-// Mock BPS data functions (restored from original)
-const getSuggestions = (input: string): string[] => {
-  const baseGeneralSuggestions = [
-    "Data populasi Kota Medan terbaru",
-    "Statistik ekonomi dan perdagangan",
-    "Data pendidikan dan kesehatan",
-    "Informasi infrastruktur kota",
-    "Tingkat pengangguran di Medan",
-    "Data kemiskinan dan kesejahteraan",
-    "Statistik industri dan UMKM",
-    "Data transportasi dan mobilitas"
-  ];
-
-  if (!input || input.length < 2) {
-    return baseGeneralSuggestions.slice(0, 6);
-  }
-
-  const inputLower = input.toLowerCase();
-  const matchingSuggestions = baseGeneralSuggestions.filter(suggestion =>
-    suggestion.toLowerCase().includes(inputLower)
-  );
-
-  return matchingSuggestions.length > 0 ? matchingSuggestions : baseGeneralSuggestions.slice(0, 4);
-};
-
-const getCategories = (): string[] => [
-  "Kependudukan dan Demografi",
-  "Ekonomi dan Perdagangan", 
-  "Pendidikan dan Kesehatan",
-  "Infrastruktur dan Pembangunan",
-  "Sosial dan Budaya",
-  "Pertanian dan Perikanan",
-  "Industri dan Energi",
-  "Transportasi dan Komunikasi"
-];
-
-const detectSpecificKeywords = (question: string): BPSDataItem[] => {
-  const mockData: BPSDataItem[] = [
-    {
-      subject_id: "pop_001",
-      title: "Data Penduduk Kota Medan 2024",
-      description: "Statistik lengkap penduduk Kota Medan berdasarkan kelompok usia, jenis kelamin, dan sebaran geografis",
-      url: "https://medankota.bps.go.id/id/statistics-table/2/pop_001",
-      category: "Kependudukan"
-    },
-    {
-      subject_id: "econ_001", 
-      title: "PDRB Kota Medan Atas Dasar Harga Konstan",
-      description: "Produk Domestik Regional Bruto Kota Medan menurut lapangan usaha atas dasar harga konstan",
-      url: "https://medankota.bps.go.id/id/statistics-table/2/econ_001",
-      category: "Ekonomi"
-    },
-    {
-      subject_id: "edu_001",
-      title: "Statistik Pendidikan Kota Medan",
-      description: "Data lengkap tentang jumlah sekolah, siswa, dan tenaga pendidik di Kota Medan",
-      url: "https://medankota.bps.go.id/id/statistics-table/2/edu_001", 
-      category: "Pendidikan"
-    }
-  ];
-
-  const keywords = question.toLowerCase();
-  return mockData.filter(item => 
-    keywords.includes(item.category.toLowerCase()) ||
-    keywords.includes('populasi') && item.subject_id.includes('pop') ||
-    keywords.includes('ekonomi') && item.subject_id.includes('econ') ||
-    keywords.includes('pendidikan') && item.subject_id.includes('edu')
-  );
-};
-
-const searchBPSData = (query: string): BPSDataItem[] => {
-  // Simulate search with mock results
-  return detectSpecificKeywords(query);
-};
 
 const detectQuestionType = (question: string): string => {
   const lower = question.toLowerCase();
@@ -111,39 +34,18 @@ const detectQuestionType = (question: string): string => {
 const findRelevantData = (question: string): BPSDataItem[] => {
   const keywordResults = detectSpecificKeywords(question);
   if (keywordResults.length > 0) {
-    return keywordResults.slice(0, 5);
+    return keywordResults;
   }
-  
+
   const results = searchBPSData(question);
   if (results.length > 0) {
-    return results.slice(0, 5);
+    return results;
   }
-  
-  // If no direct matches, try individual words
-  const words = question.toLowerCase().split(' ').filter(word => word.length > 2);
-  const partialResults: BPSDataItem[] = [];
-  
-  for (const word of words) {
-    const wordResults = detectSpecificKeywords(word);
-    if (wordResults.length > 0) {
-      partialResults.push(...wordResults);
-    } else {
-      const searchResults = searchBPSData(word);
-      partialResults.push(...searchResults.slice(0, 2));
-    }
-  }
-  
-  // Remove duplicates
-  const uniqueResults = partialResults.filter((item, index, self) =>
-    index === self.findIndex(t => t.subject_id === item.subject_id)
-  );
-  
-  return uniqueResults.slice(0, 3);
+
+  return [];
 };
 
 const generatePersonalizedResponse = (question: string, questionType: string, relevantData: BPSDataItem[]): string => {
-  let response = "";
-  
   switch (questionType) {
     case 'greeting':
       return `Halo juga! 👋 Senang bertemu dengan Anda! Saya siap membantu Anda menemukan data statistik resmi BPS Kota Medan.`;
@@ -153,37 +55,39 @@ const generatePersonalizedResponse = (question: string, questionType: string, re
       return "Saya adalah AI Data Assistant khusus untuk BPS Kota Medan! 🤖 Saya diciptakan untuk membantu Anda mengakses dan mencari data statistik resmi BPS dengan mudah.";
     case 'list':
       const categories = getCategories();
-      response = `Tentu! 📊 BPS Kota Medan memiliki ${categories.length} kategori utama statistik:\n\n`;
+      let response = `Tentu! 📊 BPS Kota Medan memiliki ${categories.length} kategori utama statistik:\n\n`;
       categories.forEach((category, index) => {
         response += `${index + 1}. ${category}\n`;
       });
       return response;
-  }
+    default:
+      if (relevantData.length > 0) {
+        const primaryResult = relevantData[0];
+        let responseContent = `Berdasarkan pertanyaan Anda tentang "${question}", saya menemukan data yang relevan. ${primaryResult.description} \n\n`;
 
-  if (relevantData.length > 0) {
-    const primaryResult = relevantData[0];
-    response += `Bagus! Saya menemukan dataset yang relevan: **${primaryResult.title}**\n\n`;
-    response += `${primaryResult.description}\n\n`;
-    
-    if (relevantData.length > 1) {
-      response += `Berikut juga beberapa data terkait yang mungkin berguna:\n`;
-    }
-    response += `Klik link di bawah untuk melihat data lengkap dari portal resmi BPS. 🔗`;
-  } else {
-    response += `Maaf, saya tidak menemukan data yang relevan dengan pertanyaan Anda. 🙏 Coba gunakan kata kunci yang lebih spesifik seperti "populasi", "ekonomi", "pendidikan", atau "infrastruktur".`;
+        if (relevantData.length > 1) {
+          responseContent += `Berikut juga beberapa data terkait yang mungkin berguna:`;
+          relevantData.slice(1, 3).forEach((item) => {
+            responseContent += `\n- **${item.title}**: ${item.description}`;
+          });
+        }
+        
+        responseContent += `\n\nKlik link di bawah untuk melihat data lengkap dari portal resmi BPS. 🔗`;
+        return responseContent;
+      } else {
+        return `Maaf, saya tidak menemukan data yang relevan dengan pertanyaan Anda. 🙏 Coba gunakan kata kunci yang lebih spesifik seperti "populasi", "ekonomi", "pendidikan", atau "infrastruktur".`;
+      }
   }
-  
-  return response;
 };
 
 // Chat Message Component
-const ChatMessage = ({ message, onEdit, isEditing }: { 
-  message: Message, 
-  onEdit: (id: string, content: string) => void, 
-  isEditing: boolean 
+const ChatMessage = ({ message, onEdit, isEditing }: {
+  message: Message,
+  onEdit: (id: string, content: string) => void,
+  isEditing: boolean
 }) => {
   const [isHovered, setIsHovered] = useState(false);
-  
+
   return (
     <div
       className={`group flex w-full ${message.type === "user" ? "justify-end" : "justify-start"} mb-6`}
@@ -193,21 +97,21 @@ const ChatMessage = ({ message, onEdit, isEditing }: {
       <div className={`flex max-w-[85%] ${message.type === "user" ? "flex-row-reverse" : "flex-row"} gap-3`}>
         {/* Avatar */}
         <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-          message.type === "user" 
-            ? "bg-orange-500 text-white" 
+          message.type === "user"
+            ? "bg-orange-500 text-white"
             : "bg-gray-100 border border-gray-200 text-gray-600"
         }`}>
-          {message.type === "user" ? 
-            <User className="w-4 h-4" /> : 
-            <Bot className="w-4 h-4" />
+          {message.type === "user"
+            ? <User className="w-4 h-4" />
+            : <Bot className="w-4 h-4" />
           }
         </div>
-        
+
         {/* Message Content */}
         <div className={`relative flex-1 ${message.type === "user" ? "text-right" : "text-left"}`}>
           <div className={`inline-block max-w-full p-4 rounded-2xl ${
-            message.type === "user" 
-              ? "bg-gray-100 text-gray-900" 
+            message.type === "user"
+              ? "bg-gray-100 text-gray-900"
               : "bg-white border border-gray-200 text-gray-900"
           }`}>
             <div className="prose prose-sm max-w-none">
@@ -215,7 +119,7 @@ const ChatMessage = ({ message, onEdit, isEditing }: {
                 {message.content}
               </p>
             </div>
-            
+
             {/* Sources */}
             {message.sources && (
               <div className="mt-4 pt-3 border-t border-gray-200">
@@ -237,7 +141,7 @@ const ChatMessage = ({ message, onEdit, isEditing }: {
               </div>
             )}
           </div>
-          
+
           {/* Edit Button */}
           {message.type === "user" && isHovered && (
             <Button
@@ -259,21 +163,21 @@ const ChatMessage = ({ message, onEdit, isEditing }: {
 // Welcome Screen Component
 const WelcomeScreen = ({ handleSuggestionClick }: { handleSuggestionClick: (q: string) => void }) => {
   const suggestions = getSuggestions('');
-  
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
       <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mb-6">
         <Bot className="w-8 h-8 text-white" />
       </div>
-      
+
       <h1 className="text-3xl font-semibold text-gray-900 mb-3">
-        Selamat datang di BPS AI Assistant
+        Selamat datang di StatMedan AI
       </h1>
-      
+
       <p className="text-gray-600 text-lg mb-8 max-w-md">
         Saya siap membantu Anda menemukan data statistik resmi dari BPS Kota Medan.
       </p>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl">
         {suggestions.slice(0, 6).map((suggestion, index) => (
           <Button
@@ -298,27 +202,27 @@ const Sidebar = ({ isOpen, onClose, onNewChat, chatHistory }: {
   chatHistory: Message[];
 }) => {
   const userMessages = chatHistory.filter(msg => msg.type === "user");
-  
+
   return (
     <>
       {/* Backdrop */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={onClose}
         />
       )}
-      
+
       {/* Sidebar */}
       <div className={`fixed left-0 top-0 h-full w-80 bg-white border-r border-gray-200 z-50 transform transition-transform duration-300 ease-in-out ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
       } lg:translate-x-0 lg:static lg:z-0`}>
-        
+
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <Bot className="w-5 h-5 text-orange-500" />
-            <span className="font-semibold text-gray-900">BPS AI Assistant</span>
+            <span className="font-semibold text-gray-900">StatMedan AI</span>
           </div>
           <Button
             variant="ghost"
@@ -329,7 +233,7 @@ const Sidebar = ({ isOpen, onClose, onNewChat, chatHistory }: {
             <X className="w-4 h-4" />
           </Button>
         </div>
-        
+
         {/* New Chat Button */}
         <div className="p-4">
           <Button
@@ -340,14 +244,14 @@ const Sidebar = ({ isOpen, onClose, onNewChat, chatHistory }: {
             Chat Baru
           </Button>
         </div>
-        
+
         {/* Chat History */}
         <div className="p-4">
           <h3 className="text-sm font-medium text-gray-600 mb-3">Riwayat Chat</h3>
           {userMessages.length > 0 ? (
             <div className="space-y-2">
               {userMessages.slice(-5).map((msg) => (
-                <div 
+                <div
                   key={msg.id}
                   className="p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
                 >
@@ -377,7 +281,7 @@ export default function AIAssistant() {
   const [isTyping, setIsTyping] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
+
   const typingTimeoutRef = useRef<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -397,27 +301,27 @@ export default function AIAssistant() {
     if (typingTimeoutRef.current) {
       window.clearInterval(typingTimeoutRef.current);
     }
-    
+
     let i = 0;
     const interval = window.setInterval(() => {
       setMessages(prev => {
         return prev.map(msg =>
-          msg.id === messageId 
+          msg.id === messageId
             ? { ...msg, content: fullContent.substring(0, i + 1) }
             : msg
         );
       });
-      
+
       i++;
       if (i >= fullContent.length) {
         window.clearInterval(interval);
         setIsTyping(false);
       }
     }, 20);
-    
+
     typingTimeoutRef.current = interval;
   };
-  
+
   const stopTyping = () => {
     if (typingTimeoutRef.current) {
       window.clearInterval(typingTimeoutRef.current);
@@ -439,17 +343,17 @@ export default function AIAssistant() {
   const handleSubmit = async (question?: string) => {
     const currentInput = question || input;
     if (!currentInput.trim() || isLoading) return;
-    
+
     if (isTyping) {
       stopTyping();
       return;
     }
 
     let userMessage: Message;
-    
+
     if (editingMessageId) {
-      setMessages(prev => prev.map(msg => 
-        msg.id === editingMessageId 
+      setMessages(prev => prev.map(msg =>
+        msg.id === editingMessageId
           ? { ...msg, content: currentInput }
           : msg
       ));
@@ -467,7 +371,7 @@ export default function AIAssistant() {
 
     setInput("");
     setIsLoading(true);
-    
+
     const responseId = (Date.now() + 1).toString();
     const assistantMessage: Message = {
       id: responseId,
@@ -481,15 +385,15 @@ export default function AIAssistant() {
 
     // Simulate processing time with original AI logic
     const processingTime = Math.random() * 1000 + 1500;
-    
+
     setTimeout(() => {
       const questionType = detectQuestionType(currentInput);
       const relevantData = findRelevantData(currentInput);
       const responseContent = generatePersonalizedResponse(currentInput, questionType, relevantData);
-      
+
       // Update message with sources and related data
-      setMessages(prev => prev.map(msg => 
-        msg.id === responseId 
+      setMessages(prev => prev.map(msg =>
+        msg.id === responseId
           ? {
               ...msg,
               sources: relevantData.length > 0 ? relevantData.map(item => ({
@@ -503,7 +407,7 @@ export default function AIAssistant() {
             }
           : msg
       ));
-      
+
       simulateTyping(responseContent, responseId);
       setIsLoading(false);
     }, processingTime);
@@ -523,17 +427,17 @@ export default function AIAssistant() {
       textareaRef.current.focus();
     }
   };
-  
+
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
-      <Sidebar 
+      <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onNewChat={handleNewChat}
         chatHistory={messages}
       />
-      
+
       {/* Main Content */}
       <div className="flex-1 flex flex-col lg:ml-0">
         {/* Header */}
@@ -545,10 +449,10 @@ export default function AIAssistant() {
           >
             <Menu className="w-5 h-5" />
           </Button>
-          <h1 className="font-semibold">BPS AI Assistant</h1>
+          <h1 className="font-semibold">StatMedan AI</h1>
           <div className="w-8" /> {/* Spacer */}
         </header>
-        
+
         {/* Messages Container */}
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-3xl mx-auto px-4 py-8">
@@ -557,9 +461,9 @@ export default function AIAssistant() {
             ) : (
               <>
                 {messages.map((message) => (
-                  <ChatMessage 
-                    key={message.id} 
-                    message={message} 
+                  <ChatMessage
+                    key={message.id}
+                    message={message}
                     onEdit={handleEdit}
                     isEditing={!!editingMessageId}
                   />
@@ -581,7 +485,7 @@ export default function AIAssistant() {
             )}
           </div>
         </div>
-        
+
         {/* Input Area */}
         <div className="border-t border-gray-200 bg-white p-4">
           <div className="max-w-3xl mx-auto">
@@ -596,10 +500,10 @@ export default function AIAssistant() {
                 disabled={isLoading}
                 rows={1}
               />
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 onClick={() => handleSubmit()}
-                disabled={(!input.trim() && !isTyping) || isLoading} 
+                disabled={(!input.trim() && !isTyping) || isLoading}
                 size="sm"
                 className="h-8 w-8 p-0 rounded-lg bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300"
               >
@@ -610,7 +514,7 @@ export default function AIAssistant() {
                 )}
               </Button>
             </div>
-            
+
             {/* Footer Text */}
             <p className="text-xs text-gray-500 text-center mt-3">
               AI Assistant dapat membuat kesalahan. Verifikasi informasi penting dengan sumber resmi.

@@ -431,7 +431,7 @@ export const bpsData: BPSDataItem[] = (() => {
 
 // Helper function untuk kategori
 export const getCategories = (): string[] => {
-  return Array.from(new Set(bpsDataStatic.map(item => item.category)));
+  return Array.from(new Set(bpsData.map(item => item.category)));
 };
 
 // Interface untuk scoring hasil pencarian
@@ -458,16 +458,16 @@ const STOPWORDS = new Set<string>([
 const calculateSimilarityScore = (query: string, target: string, field: 'title' | 'description' | 'category'): number => {
   const normalizedQuery = normalizeText(query);
   const normalizedTarget = normalizeText(target);
-  
+
   const queryWords = normalizedQuery
     .split(' ')
     .filter(word => word.length > 2 && !STOPWORDS.has(word));
   const targetWords = normalizedTarget
     .split(' ')
     .filter(word => word.length > 2 && !STOPWORDS.has(word));
-  
+
   if (queryWords.length === 0) return 0;
-  
+
   let score = 0;
   let exactMatches = 0;
   let partialMatches = 0;
@@ -480,7 +480,7 @@ const calculateSimilarityScore = (query: string, target: string, field: 'title' 
       score += 120; // very strong
     }
   }
-  
+
   // Check for exact/partial matches by word
   for (const queryWord of queryWords) {
     if (normalizedTarget.includes(queryWord)) {
@@ -493,7 +493,7 @@ const calculateSimilarityScore = (query: string, target: string, field: 'title' 
       }
     }
   }
-  
+
   // Bonus for starting with query
   if (normalizedTarget.startsWith(normalizedQuery)) {
     score += field === 'title' ? 25 : field === 'category' ? 15 : 10;
@@ -516,18 +516,18 @@ const calculateSimilarityScore = (query: string, target: string, field: 'title' 
   if (contiguousBonus >= 2) {
     score += (field === 'title' ? 15 : 8) * contiguousBonus;
   }
-  
+
   // Calculate match percentage
   const matchPercentage = (exactMatches + partialMatches * 0.5) / queryWords.length;
   score *= (1 + matchPercentage);
-  
+
   return score;
 };
 
 // Improved search function dengan scoring yang lebih akurat
 export const searchBPSData = (query: string): BPSDataItem[] => {
   if (!query || query.trim().length < 2) return [];
-  
+
   const results: SearchResult[] = [];
   const normalizedQuery = normalizeText(query);
 
@@ -536,11 +536,11 @@ export const searchBPSData = (query: string): BPSDataItem[] => {
   if (exactMatches.length > 0) {
     return [...exactMatches, ...bpsData.filter(it => !exactMatches.includes(it))];
   }
-  
+
   for (const item of bpsData) {
     let maxScore = 0;
     let matchType: SearchResult['matchType'] = 'description';
-    
+
     // Score untuk title match (prioritas tertinggi)
     const titleScore = calculateSimilarityScore(normalizedQuery, item.title, 'title');
     if (titleScore > maxScore) {
@@ -549,26 +549,26 @@ export const searchBPSData = (query: string): BPSDataItem[] => {
         ? 'exact_title'
         : 'partial_title';
     }
-    
+
     // Score untuk category match (prioritas sedang)
     const categoryScore = calculateSimilarityScore(normalizedQuery, item.category, 'category');
     if (categoryScore > maxScore) {
       maxScore = categoryScore;
       matchType = 'category';
     }
-    
+
     // Score untuk description match (prioritas rendah)
     const descScore = calculateSimilarityScore(normalizedQuery, item.description, 'description');
     if (descScore > maxScore) {
       maxScore = descScore;
       matchType = 'description';
     }
-    
+
     if (maxScore > 1) {
       results.push({ item, score: maxScore, matchType });
     }
   }
-  
+
   results.sort((a, b) => {
     const matchTypePriority = {
       'exact_title': 4,
@@ -604,16 +604,16 @@ export const searchBPSData = (query: string): BPSDataItem[] => {
     const others = ordered.filter(it => !titleContains(it));
     ordered = [...preferred, ...others];
   }
-  
+
   return ordered;
 };
 
 // Enhanced suggestions dengan scoring yang lebih baik
-export const getSuggestions = (partialQuery: string): BPSDataItem[] => {
+export const getSuggestions = (partialQuery: string): string[] => {
   if (partialQuery.length < 2) return [];
-  
+
   const results = searchBPSData(partialQuery);
-  return results.slice(0, 5); // Limit to 5 suggestions
+  return results.map(item => item.title).slice(0, 5); // Limit to 5 suggestions
 };
 
 // Fungsi khusus untuk mendeteksi keywords yang spesifik
@@ -656,14 +656,19 @@ export const detectSpecificKeywords = (query: string): BPSDataItem[] => {
     'kemiskinan': [563],
     'gender': [564],
   };
-  
+
   const matchedIds = new Set<number>();
-  
+
   for (const [keyword, ids] of Object.entries(keywordMap)) {
     if (normalizedQuery.includes(keyword)) {
       ids.forEach(id => matchedIds.add(id));
     }
   }
-  
-  return bpsData.filter(item => matchedIds.has(item.subject_id));
+
+  const results = bpsData.filter(item => matchedIds.has(item.subject_id));
+  return results.sort((a, b) => {
+    const aMatchScore = Object.keys(keywordMap).filter(k => normalizedQuery.includes(k) && keywordMap[k].includes(a.subject_id)).length;
+    const bMatchScore = Object.keys(keywordMap).filter(k => normalizedQuery.includes(k) && keywordMap[k].includes(b.subject_id)).length;
+    return bMatchScore - aMatchScore;
+  });
 };
